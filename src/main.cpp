@@ -202,7 +202,7 @@ int main() {
   int lane = 1;
 
   // Have a reference velocity to target
-  double ref_vel = 49.5; // mph
+  double ref_vel = 0.0; // mph
 
   h.onMessage([&ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -241,6 +241,11 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
             int prev_size = previous_path_x.size();
+
+            if (ref_vel < 49.5)
+            {
+              ref_vel += 0.224;
+            }
 
             // Create a list of widely spaced (x, y) waypoints, evenly spaced at 30m
             // Later we will interpolate these waypoints with a spline and fill it in with more points that control speed.
