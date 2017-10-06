@@ -160,6 +160,13 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
+int getLane(double d)
+{
+  if (d > 0 && d < 4) return 0;
+  else if (d > 4 && d < 8) return 1;
+  else return 2;
+}
+
 int main() {
   uWS::Hub h;
 
@@ -248,33 +255,50 @@ int main() {
             }
 
             bool too_close = false;
+            vector<bool> can_change_lane = {true, true, true};
+            can_change_lane[lane] = false;
 
             // find ref_v to use
             for (int i = 0; i < sensor_fusion.size(); i++)
             {
               // car is in my lane
               float d = sensor_fusion[i][6];
-              if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
+
+              double vx = sensor_fusion[i][3];
+              double vy = sensor_fusion[i][4];
+              double check_speed = sqrt(vx*vx + vy*vy);
+              double check_car_s = sensor_fusion[i][5];
+              double car_lane = getLane(d);
+
+              // if using previous points can project s value out
+              check_car_s += ((double)prev_size * .02 * check_speed);
+
+              // check s values greater than mine and s gap
+              if (car_lane == lane && (check_car_s > car_s) && ((check_car_s - car_s) < 30))
               {
-                double vx = sensor_fusion[i][3];
-                double vy = sensor_fusion[i][4];
-                double check_speed = sqrt(vx*vx + vy*vy);
-                double check_car_s = sensor_fusion[i][5];
+                too_close = true;
+              }
 
-                // if using previous points can project s value out
-                check_car_s += ((double)prev_size * .02 * check_speed);
-
-                // check s values greater than mine and s gap
-                if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))
-                {
-                  too_close = true;
-                }
+              if (check_speed > car_speed || ((check_car_s - car_s > -10) && (check_car_s - car_s < 30)))
+              {
+                can_change_lane[car_lane] = false;
               }
             }
 
             if (too_close)
             {
-              ref_vel -= 0.224;
+              if (lane - 1 >= 0 && can_change_lane[lane - 1])
+              {
+                lane -= 1;
+              }
+              else if (lane + 1 <= 2 && can_change_lane[lane + 1])
+              {
+                lane += 1;
+              }
+              else
+              {
+                ref_vel -= 0.112;
+              }
             }
             else if (ref_vel < 49.5)
             {
