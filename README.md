@@ -1,6 +1,83 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
+[![Result Video](https://img.youtube.com/vi/qyNeKimyqp8/0.jpg)](https://youtu.be/qyNeKimyqp8)
+
+### Generating trajectories
+
+#### Generating smooth trajectories
+
+We can just use s and d coordinates to generate path. But there are some corner cases that violates accelerating and jerk. We need to smooth the path to resolve the problem. To smooth the path, Cubic Spline Interpolation Library is used.
+
+We need 5 points to initialize spline.
+
+1. Last two points of previous path
+
+```cpp
+...
+ref_x = previous_path_x[prev_size - 1];
+ref_y = previous_path_y[prev_size - 1];
+
+double ref_x_prev = previous_path_x[prev_size - 2];
+double ref_y_prev = previous_path_y[prev_size - 2];
+...
+```
+
+2. Another three points at 30m, 60m, 90m distances from our car in the same lane.
+
+```cpp
+vector<double> next_wp0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+vector<double> next_wp1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+vector<double> next_wp2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+```
+
+#### Avoiding collision
+
+To avoid collision, we check a lane in the car. If front of the car is too close, we changed lane if possible. If it is impossible we slow down the car speed.
+
+```cpp
+if (car_lane == lane && (check_car_s > car_s) && ((check_car_s - car_s) < 30))
+{
+  too_close = true;
+}
+
+if (check_speed > car_speed || ((check_car_s - car_s > -10) && (check_car_s - car_s < 30)))
+{
+  can_change_lane[car_lane] = false;
+}
+```
+
+```cpp
+if (too_close)
+
+if (lane - 1 >= 0 && can_change_lane[lane - 1])
+{
+  lane -= 1;
+}
+else if (lane + 1 <= 2 && can_change_lane[lane + 1])
+{
+  lane += 1;
+}
+else
+{
+  ref_vel -= 0.112;
+}
+```
+
+#### Avoding jerk in the cold start
+
+To avoid jerk in the cold start, we start from zero. After that we accelerate by about 5m/s.
+
+```cpp
+double ref_vel = 0.0; // mph
+...
+ if (ref_vel < 49.5)
+{
+  ref_vel += 0.224;
+}
+```
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
